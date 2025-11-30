@@ -11,3 +11,6 @@
 # Temporary files
 *.tmp
 *.log
+
+# internal docs
+docs/
