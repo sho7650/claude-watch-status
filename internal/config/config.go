@@ -17,8 +17,8 @@ func DefaultConfig() *Config {
 	homeDir, _ := os.UserHomeDir()
 	return &Config{
 		ProjectsDir: filepath.Join(homeDir, ".claude", "projects"),
-		ServerPort:  8787,
-		HooksPort:   8787,
+		ServerPort:  10087,
+		HooksPort:   10087,
 	}
 }
 

@@ -14,3 +14,7 @@
 
 # internal docs
 docs/
+
+# mcp
+.serena/
+.claude/

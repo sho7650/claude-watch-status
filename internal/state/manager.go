@@ -179,11 +179,33 @@ func (m *Manager) CheckIdleProjects(idleThreshold time.Duration) []StatusEvent {
 	now := time.Now()
 
 	for _, status := range m.projects {
+		// For hooks-based status, only check processing state for idle detection
+		// Other hooks states (running, completed, etc.) are accurate and don't need idle checks
 		if status.Source == "hooks" {
-			// Hooks-based status is already accurate
+			if status.State != "processing" {
+				continue
+			}
+			// Check idle time for hooks-based processing state using UpdatedAt
+			idle := now.Sub(status.UpdatedAt)
+			if idle < idleThreshold || idle > 5*time.Minute {
+				continue
+			}
+			// Processing state that's been idle = waiting approval
+			events = append(events, StatusEvent{
+				Project: ProjectStatus{
+					Name:      status.Name,
+					Icon:      "⏸️",
+					State:     "waiting approval",
+					UpdatedAt: now,
+					SessionID: status.SessionID,
+					Source:    "hooks",
+				},
+				Type: "idle_approval",
+			})
 			continue
 		}
 
+		// JSONL-based status: use FileTime for idle detection
 		idle := now.Sub(status.FileTime)
 		if idle < idleThreshold || idle > 5*time.Minute {
 			continue

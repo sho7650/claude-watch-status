@@ -107,7 +107,7 @@ func (d *DashboardMode) redraw() {
 }
 
 func (d *DashboardMode) checkIdleProjects() {
-	events := d.manager.CheckIdleProjects(20 * time.Second)
+	events := d.manager.CheckIdleProjects(5 * time.Second)
 
 	for _, event := range events {
 		// Create a unique key for this idle event

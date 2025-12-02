@@ -89,7 +89,7 @@ func (s *StreamMode) printStatus(status *state.ProjectStatus) {
 }
 
 func (s *StreamMode) checkIdleProjects() {
-	events := s.manager.CheckIdleProjects(20 * time.Second)
+	events := s.manager.CheckIdleProjects(5 * time.Second)
 
 	for _, event := range events {
 		// Create a unique key for this idle event

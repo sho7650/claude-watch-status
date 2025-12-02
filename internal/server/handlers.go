@@ -131,10 +131,11 @@ func convertHookEventToState(hookEvent, toolName string) (icon, stateText string
 	case "sessionend":
 		return "💤", "session ended"
 	case "pretooluse":
+		// PreToolUse fires AFTER approval, so tool is now running
 		if toolName != "" {
-			return "🔧", "calling: " + toolName
+			return "🔧", "running: " + toolName
 		}
-		return "🔧", "calling tool"
+		return "🔧", "running tool"
 	case "posttooluse":
 		return "⏳", "processing"
 	case "stop":

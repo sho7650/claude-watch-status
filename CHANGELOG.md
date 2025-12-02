@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Estimated completion detection** - Detect completed status based on idle time (20+ seconds) with text response, since JSONL format doesn't reliably record `stop_reason: "end_turn"`
+- **Estimated completion detection** - Detect completed status based on idle time (5+ seconds) with text response, since JSONL format doesn't reliably record `stop_reason: "end_turn"`
+- **Faster approval detection** - Reduced idle threshold from 20s to 5s for quicker `waiting approval` status detection
 
 ### Changed
 
