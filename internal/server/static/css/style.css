@@ -1,17 +1,17 @@
 :root {
-    --bg-primary: #1a1b26;
-    --bg-secondary: #24283b;
-    --bg-tertiary: #414868;
-    --text-primary: #c0caf5;
-    --text-secondary: #a9b1d6;
-    --text-muted: #565f89;
-    --accent-blue: #7aa2f7;
-    --accent-green: #9ece6a;
-    --accent-yellow: #e0af68;
-    --accent-red: #f7768e;
-    --accent-purple: #bb9af7;
-    --accent-cyan: #7dcfff;
-    --border-color: #414868;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #868e96;
+    --accent-blue: #4263eb;
+    --accent-green: #37b24d;
+    --accent-yellow: #f59f00;
+    --accent-red: #e03131;
+    --accent-purple: #7048e8;
+    --accent-cyan: #1098ad;
+    --border-color: #dee2e6;
 }
 
 * {
@@ -158,7 +158,7 @@ h1 {
 
 .project-source.hooks {
     background-color: var(--accent-purple);
-    color: var(--bg-primary);
+    color: #ffffff;
 }
 
 footer {
