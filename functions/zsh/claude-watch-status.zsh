@@ -159,8 +159,8 @@ _cws_dashboard() {
                 project=$(basename "$project_path" | sed 's/.*-//')
                 file_key="$latest:$mtime"
 
-                # 20+ seconds idle - check for waiting approval
-                if [[ $idle -ge 20 && $idle -lt 300 ]]; then
+                # 5+ seconds idle - check for waiting approval
+                if [[ $idle -ge 5 && $idle -lt 300 ]]; then
                     if [[ -z "${notified[$file_key]}" ]]; then
                         last_entry=$(tail -1 "$latest" 2>/dev/null)
                         last_type=$(echo "$last_entry" | jq -r '.type // empty' 2>/dev/null)
@@ -179,7 +179,7 @@ _cws_dashboard() {
                                     notify-send 'Claude Code' "$project: waiting approval" 2>/dev/null &
                                 fi
                             elif [[ "$stop_reason" == "null" && "$content_type" == "text" ]]; then
-                                # Estimated completed - text response idle for 20+ seconds
+                                # Estimated completed - text response idle for 5+ seconds
                                 echo "$project|✅|completed|$(date +%H:%M:%S)" >> /tmp/cws_dashboard_updates.$$
                                 notified[$file_key]=1
 
@@ -283,8 +283,8 @@ _cws_stream() {
                 project=$(basename "$project_path" | sed 's/.*-//')
                 file_key="$latest:$mtime"
 
-                # 20+ seconds idle
-                if [[ $idle -ge 20 && $idle -lt 300 ]]; then
+                # 5+ seconds idle
+                if [[ $idle -ge 5 && $idle -lt 300 ]]; then
                     if [[ -z "${notified[$file_key]}" ]]; then
                         last_entry=$(tail -1 "$latest" 2>/dev/null)
                         last_type=$(echo "$last_entry" | jq -r '.type // empty' 2>/dev/null)

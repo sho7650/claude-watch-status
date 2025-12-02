@@ -1,0 +1,63 @@
+version: 2
+
+project_name: claude-watch-status
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/claude-watch-status
+    binary: claude-watch-status
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    env:
+      - CGO_ENABLED=0
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
+brews:
+  - repository:
+      owner: sho7650
+      name: homebrew-tap
+    folder: Formula
+    homepage: "https://github.com/sho7650/claude-watch-status"
+    description: "Real-time status monitor for Claude Code sessions"
+    license: "MIT"
+    install: |
+      bin.install "claude-watch-status"
+    test: |
+      system "#{bin}/claude-watch-status", "version"
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  github:
+    owner: sho7650
+    name: claude-watch-status
+  draft: false
+  prerelease: auto

@@ -60,8 +60,8 @@ function _claude_watch_dashboard
                 set -l project (basename \"\$project_dir\" | sed 's/.*-//')
                 set -l file_key \"\$latest:\$mtime\"
 
-                # 20+ seconds idle - check for waiting approval
-                if test \$idle -ge 20 -a \$idle -lt 300
+                # 5+ seconds idle - check for waiting approval
+                if test \$idle -ge 5 -a \$idle -lt 300
                     if not contains \"\$file_key\" \$notified
                         set -l last_entry (tail -1 \"\$latest\" 2>/dev/null)
                         set -l last_type (echo \"\$last_entry\" | jq -r '.type // empty' 2>/dev/null)
@@ -268,8 +268,8 @@ function _claude_watch_stream
                 set -l project (basename \"\$project_dir\" | sed 's/.*-//')
                 set -l file_key \"\$latest:\$mtime\"
 
-                # 20+ seconds idle
-                if test \$idle -ge 20 -a \$idle -lt 300
+                # 5+ seconds idle
+                if test \$idle -ge 5 -a \$idle -lt 300
                     if not contains \"\$file_key\" \$notified
                         set -l last_entry (tail -1 \"\$latest\" 2>/dev/null)
                         set -l last_type (echo \"\$last_entry\" | jq -r '.type // empty' 2>/dev/null)

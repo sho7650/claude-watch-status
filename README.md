@@ -32,7 +32,7 @@ Real-time status monitor for [Claude Code](https://docs.anthropic.com/en/docs/cl
 | ✅   | completed        | Response complete, waiting for input (estimated)[^1] |
 | ⚠️   | max tokens       | Token limit reached                                  |
 
-[^1]: Estimated based on idle time (20+ seconds with text response). See [Limitations](#limitations).
+[^1]: Estimated based on idle time (5+ seconds with text response). See [Limitations](#limitations).
 
 ## Requirements
 
@@ -192,7 +192,7 @@ Idle Detection (20+ seconds):
 
 ### Adjusting Idle Timeout
 
-The default idle timeout is 20 seconds. To change it, edit the function and modify the idle check condition (look for `idle -ge 20` in Fish or `$idle -ge 20` in Zsh).
+The default idle timeout is 5 seconds. To change it, edit the function and modify the idle check condition (look for `idle -ge 5` in Fish or `$idle -ge 5` in Zsh).
 
 ### Disabling Notifications
 
