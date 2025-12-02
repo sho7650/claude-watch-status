@@ -25,6 +25,10 @@ type Watcher struct {
 	done        chan struct{}
 	mu          sync.RWMutex
 	watching    map[string]bool
+
+	// Project name cache: encodedDir -> projectName
+	nameCache   map[string]string
+	nameCacheMu sync.RWMutex
 }
 
 // New creates a new Watcher for the given projects directory
@@ -41,6 +45,7 @@ func New(projectsDir string) (*Watcher, error) {
 		errors:      make(chan error, 10),
 		done:        make(chan struct{}),
 		watching:    make(map[string]bool),
+		nameCache:   make(map[string]string),
 	}
 
 	return w, nil
@@ -152,7 +157,7 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 		return
 	}
 
-	projectName := extractProjectName(event.Name)
+	projectName := w.extractProjectName(event.Name)
 	sessionID := extractSessionID(event.Name)
 
 	w.events <- Event{
@@ -162,17 +167,67 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 	}
 }
 
-// extractProjectName extracts the project name from the path
-// Path format: ~/.claude/projects/{hash}-{projectname}/{session}.jsonl
-func extractProjectName(path string) string {
+// extractProjectName extracts the project name from the Claude projects path.
+// Path format: ~/.claude/projects/{encoded-path}/{session}.jsonl
+// where {encoded-path} is the original path with "/" replaced by "-"
+// e.g., "-Users-sho-work-claude-watch-status" -> "claude-watch-status"
+func (w *Watcher) extractProjectName(path string) string {
 	dir := filepath.Dir(path)
 	base := filepath.Base(dir)
 
-	// Find the last dash and take everything after it
-	if idx := strings.LastIndex(base, "-"); idx != -1 {
-		return base[idx+1:]
+	// Check cache first
+	w.nameCacheMu.RLock()
+	if cached, ok := w.nameCache[base]; ok {
+		w.nameCacheMu.RUnlock()
+		return cached
 	}
-	return base
+	w.nameCacheMu.RUnlock()
+
+	// Resolve project name by checking filesystem
+	projectName := resolveProjectName(base)
+
+	// Store in cache
+	w.nameCacheMu.Lock()
+	w.nameCache[base] = projectName
+	w.nameCacheMu.Unlock()
+
+	return projectName
+}
+
+// resolveProjectName resolves the actual project name by checking
+// if the reconstructed path exists on the filesystem.
+// Claude Code encodes paths by replacing "/" with "-", so we need to
+// find where the actual project directory starts.
+func resolveProjectName(encodedDir string) string {
+	if len(encodedDir) == 0 {
+		return encodedDir
+	}
+
+	// Remove leading "-" (replacement of leading "/")
+	s := encodedDir
+	if s[0] == '-' {
+		s = s[1:]
+	}
+
+	// Search from end to find the actual project name
+	// by checking if the reconstructed path exists
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == '-' {
+			projectName := s[i+1:]
+			parentPath := "/" + strings.ReplaceAll(s[:i], "-", "/")
+			fullPath := filepath.Join(parentPath, projectName)
+
+			if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
+				return projectName
+			}
+		}
+	}
+
+	// Fallback: return everything after the last dash (legacy behavior)
+	if idx := strings.LastIndex(encodedDir, "-"); idx != -1 {
+		return encodedDir[idx+1:]
+	}
+	return encodedDir
 }
 
 // extractSessionID extracts the session ID from the filename
