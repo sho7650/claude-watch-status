@@ -97,9 +97,14 @@ func (d *DashboardMode) redraw() {
 
 	for _, status := range statuses {
 		ts := status.UpdatedAt.Format("15:04:05")
+		// Add uncertainty indicator if state is estimated
+		icon := status.Icon
+		if status.IsEstimated {
+			icon = status.Icon + "❓"
+		}
 		// Format: [project     ] icon [timestamp] state
 		fmt.Printf("[%-12s] %s \033[90m[%s]\033[0m %-20s\033[K\n",
-			status.Name, status.Icon, ts, status.State)
+			status.Name, icon, ts, status.State)
 	}
 
 	// Clear any remaining lines
@@ -118,7 +123,7 @@ func (d *DashboardMode) checkIdleProjects() {
 		d.notified[key] = true
 
 		// Update the manager's state
-		d.manager.MarkIdle(event.Project.Name, event.Project.Icon, event.Project.State)
+		d.manager.MarkIdle(event.Project.Name, event.Project.Icon, event.Project.State, event.Project.IsEstimated)
 
 		// Send notification
 		switch event.Type {
