@@ -8,114 +8,77 @@ Real-time status monitor for [Claude Code](https://docs.anthropic.com/en/docs/cl
 
 `claude-watch-status` monitors Claude Code activity in real-time by watching the JSONL session logs. It provides visual feedback on what Claude is doing across multiple projects simultaneously.
 
-**Supported Shells**: Fish, Zsh
-
 ## Features
 
-- 🔄 **Real-time monitoring** - Watches Claude Code session files for changes
-- 📊 **Multi-project support** - Track multiple Claude Code sessions at once
-- 🔔 **Desktop notifications** - Get notified when tasks complete (macOS/Linux)
-- 🎨 **Color-coded output** - Easy-to-read status indicators
-- ⏸️ **Approval detection** - Detects when Claude is waiting for user approval
-- 📋 **Dashboard mode** - Show latest status per project in a compact view
+- **Real-time monitoring** - Watches Claude Code session files for changes
+- **Multi-project support** - Track multiple Claude Code sessions at once
+- **Desktop notifications** - Get notified when tasks complete (macOS/Linux)
+- **Web UI** - Browser-based dashboard with real-time updates
+- **Hooks integration** - Optional Claude Code hooks for faster detection
+- **Tool-specific timeouts** - Intelligent detection based on tool type
+- **Uncertainty indicators** - Shows when detection is estimated vs confirmed
 
 ## Status Icons
 
-| Icon | Status           | Description                                          |
-| ---- | ---------------- | ---------------------------------------------------- |
-| 👤   | user input       | User sent a message                                  |
-| ⏳   | processing       | Processing tool results                              |
-| 🤔   | thinking         | Generating response                                  |
-| 🔧   | calling tool     | Invoking a tool                                      |
-| 🔧   | running: X       | Executing specific tool (e.g., Bash, Write)          |
-| ⏸️   | waiting approval | Waiting for user to approve tool execution           |
-| ✅   | completed        | Response complete, waiting for input (estimated)[^1] |
-| ⚠️   | max tokens       | Token limit reached                                  |
+| Icon | Status | Description |
+|------|--------|-------------|
+| 👤 | user input | User sent a message |
+| ⏳ | processing | Processing tool results |
+| 🤔 | thinking | Generating response |
+| 🔧 | calling tool | Invoking a tool |
+| 🔧 | running: X | Executing specific tool (e.g., Bash, Write) |
+| ⏸️ | waiting approval | Waiting for user to approve tool execution |
+| ⏸️❓ | waiting approval | Estimated waiting (tool may still be running) |
+| ✅ | completed | Response complete, waiting for input |
+| ✅❓ | completed | Estimated completion (based on idle time)[^1] |
+| ⚠️ | max tokens | Token limit reached |
 
-[^1]: Estimated based on idle time (5+ seconds with text response). See [Limitations](#limitations).
-
-## Requirements
-
-- [Fish shell](https://fishshell.com/) 3.0+ **or** [Zsh](https://www.zsh.org/)
-- [fswatch](https://github.com/emcrisostomo/fswatch) - File change monitor
-- [jq](https://jqlang.github.io/jq/) - JSON processor
-- [terminal-notifier](https://github.com/julienXX/terminal-notifier) (optional, macOS) - Desktop notifications
-- [libnotify](https://gitlab.gnome.org/GNOME/libnotify) (optional, Linux) - Desktop notifications
-
-### Installation of Dependencies
-
-```bash
-# macOS (Homebrew)
-brew install fswatch jq terminal-notifier
-
-# Ubuntu/Debian
-sudo apt install fswatch jq libnotify-bin
-
-# Arch Linux
-sudo pacman -S fswatch jq libnotify
-```
+[^1]: The ❓ indicator shows when state detection is based on timeout heuristics rather than definitive signals.
 
 ## Installation
 
-### Fish Shell
-
-#### Option 1: Fisher (recommended)
-
-```fish
-fisher install sho7650/claude-watch-status
-```
-
-#### Option 2: Manual Installation
-
-```fish
-# Create functions directory if it doesn't exist
-mkdir -p ~/.config/fish/functions
-
-# Download the function
-curl -o ~/.config/fish/functions/claude-watch-status.fish \
-  https://raw.githubusercontent.com/sho7650/claude-watch-status/main/functions/fish/claude-watch-status.fish
-```
-
-#### Option 3: Copy directly
-
-Copy the contents of `functions/fish/claude-watch-status.fish` to your `~/.config/fish/functions/` directory.
-
-### Zsh
-
-Add the following to your `~/.zshrc`:
-
-```zsh
-# Option 1: Source directly (replace with your actual path)
-source /path/to/claude-watch-status/functions/zsh/claude-watch-status.zsh
-
-# Option 2: Download and source
-curl -o ~/.config/zsh/claude-watch-status.zsh \
-  https://raw.githubusercontent.com/sho7650/claude-watch-status/main/functions/zsh/claude-watch-status.zsh
-source ~/.config/zsh/claude-watch-status.zsh
-```
-
-Then reload your shell:
+### Using Go
 
 ```bash
-source ~/.zshrc
+go install github.com/sho7650/claude-watch-status/cmd/claude-watch-status@latest
+```
+
+### From Source
+
+```bash
+git clone https://github.com/sho7650/claude-watch-status.git
+cd claude-watch-status
+go build -o claude-watch-status ./cmd/claude-watch-status
+```
+
+### Using Homebrew (macOS)
+
+```bash
+# Coming soon
+# brew install sho7650/tap/claude-watch-status
 ```
 
 ## Usage
 
+### CLI Modes
+
 ```bash
-# Start monitoring (stream mode - default)
+# Stream mode (default) - shows all events chronologically
 claude-watch-status
 
-# Start monitoring (dashboard mode)
+# Dashboard mode - compact view with latest status per project
 claude-watch-status -d
 claude-watch-status --dashboard
 
+# Web UI mode - browser-based dashboard
+claude-watch-status serve
+claude-watch-status serve -p 8080  # custom port
+
 # Show help
-claude-watch-status -h
 claude-watch-status --help
 
-# Stop monitoring
-# Press Ctrl+C
+# Show version
+claude-watch-status version
 ```
 
 ### Stream Mode (Default)
@@ -143,24 +106,74 @@ Shows the latest status per project, updating in place:
 Claude Code Status (Ctrl+C to stop)
 ────────────────────────────────────────
 [myproject   ] 🤔 [10:15:43] thinking
-[another-proj] ✅ [10:17:13] completed
+[another-proj] ✅❓ [10:17:13] completed
 [new-project ] ⏳ [10:20:19] processing
 ```
 
+### Web UI Mode (`serve`)
+
+Start the web server and open http://localhost:10087 in your browser:
+
+```bash
+claude-watch-status serve
+```
+
+Features:
+- Real-time updates via Server-Sent Events (SSE)
+- Clean, responsive interface
+- Works across local network
+
+## Hooks Integration (Optional)
+
+For faster and more accurate detection, install Claude Code hooks:
+
+```bash
+# Install hooks
+claude-watch-status init
+
+# Check installation status
+claude-watch-status init --check
+
+# Remove hooks
+claude-watch-status init --remove
+```
+
+When hooks are installed:
+1. Start the daemon: `claude-watch-status serve`
+2. Claude Code will notify the daemon of state changes in real-time
+3. No polling delays for tool execution detection
+
 ## How It Works
+
+### JSONL Parsing
 
 Claude Code stores session transcripts as JSONL files in `~/.claude/projects/`. This tool:
 
-1. Uses `fswatch` to monitor these files for changes
+1. Monitors these files for changes using fsnotify
 2. Parses the latest entry in each session file
 3. Determines the current state based on:
    - `type`: "user", "assistant", or "summary"
    - `stop_reason`: "end_turn", "tool_use", or null
    - `content[0].type`: "text" or "tool_use"
-4. Displays color-coded status with timestamps
-5. Runs a background process to detect idle states (approval waiting, completion)
+4. Applies tool-specific timeouts for idle detection
+5. Displays status with uncertainty indicators when detection is estimated
 
-### JSONL State Detection Logic
+### Tool-Specific Timeouts
+
+Different tools have different expected execution times. The system uses intelligent timeouts to reduce false positives:
+
+| Tool Category | Timeout | Examples |
+|---------------|---------|----------|
+| Quick operations | 5 sec | TodoWrite, ExitPlanMode |
+| File I/O | 10 sec | Read, Write, Edit, Glob, Grep |
+| System commands | 10 sec | Bash, BashOutput |
+| Symbol operations | 30 sec | mcp__serena__* |
+| Network | 60 sec | WebFetch, WebSearch |
+| Browser automation | 2 min | mcp__playwright__*, mcp__chrome-devtools__* |
+| Extended thinking | 2 min | mcp__sequential-thinking__* |
+| Sub-agents | 3 min | Task |
+
+### State Detection Logic
 
 ```
 Entry Type: "user"
@@ -174,7 +187,7 @@ Entry Type: "assistant"
   └─ stop_reason: "tool_use"         → 🔧 running: [tool_name]
   └─ stop_reason: "max_tokens"       → ⚠️ max tokens
 
-Idle Detection (20+ seconds):
+Idle Detection (tool-specific timeout):
   └─ stop_reason: null + tool_use    → ⏸️ waiting approval
   └─ stop_reason: "tool_use"         → ⏸️ waiting approval
   └─ stop_reason: null + text        → ✅ completed (estimated)
@@ -190,63 +203,55 @@ Idle Detection (20+ seconds):
 |----------|---------|-------------|
 | `CLAUDE_PROJECTS_DIR` | `~/.claude/projects` | Directory containing Claude Code session files |
 
-### Adjusting Idle Timeout
+### Server Configuration
 
-The default idle timeout is 5 seconds. To change it, edit the function and modify the idle check condition (look for `idle -ge 5` in Fish or `$idle -ge 5` in Zsh).
+The web server runs on port 10087 by default. Use `-p` to specify a different port:
 
-### Disabling Notifications
-
-Remove or comment out the notification lines in the function, or simply don't install `terminal-notifier` (macOS) or `libnotify` (Linux).
+```bash
+claude-watch-status serve -p 8080
+```
 
 ## Limitations
 
-### Estimated Completion Detection
+### Estimated Detection
 
-The JSONL session format does not record `stop_reason: "end_turn"` after streaming completes - all assistant messages remain with `stop_reason: null`. Therefore, completion status is **estimated** based on:
+Some states cannot be detected definitively from JSONL:
 
-- Last entry is `assistant` type
-- `stop_reason` is `null`
-- `content[0].type` is `text` (not `tool_use`)
-- Idle for 20+ seconds
+1. **Completion**: `stop_reason: "end_turn"` is never recorded in JSONL files
+2. **Waiting approval vs Running**: Both appear as `stop_reason: "tool_use"`
 
-This means completion detection has a ~20 second delay. For more accurate real-time detection, Claude Code Hooks would be required.
+The ❓ indicator shows when detection is based on timeout heuristics. This is expected behavior, not a bug.
 
-### Single Instance Only
+### Single Instance
 
-Running multiple instances of `claude-watch-status` simultaneously (e.g., Fish and Zsh, or stream and dashboard mode) is **not recommended**. When multiple `fswatch` processes monitor the same directory, file system events may be distributed inconsistently between them, causing some events to be missed by one or both instances.
+Running multiple instances simultaneously is not recommended. File system events may be distributed inconsistently between watchers.
 
-If you need to switch between shells or modes, stop the current instance first (Ctrl+C).
+## Shell Functions (Legacy)
 
-## Troubleshooting
-
-### "fswatch not found"
-
-Install fswatch using your package manager (see Requirements).
-
-### "jq not found"
-
-Install jq using your package manager (see Requirements).
-
-### No output appears
-
-1. Make sure Claude Code is running and has active sessions
-2. Check that `~/.claude/projects/` exists and contains `.jsonl` files
-3. Verify fswatch is working: `fswatch ~/.claude/projects/`
-
-### Notifications not working
-
-- **macOS**: Install `terminal-notifier` and check notification permissions in System Settings
-- **Linux**: Install `libnotify` (provides `notify-send` command)
+The original Fish/Zsh shell functions are still available in `functions/` but are no longer maintained. The Go implementation is recommended for all users.
 
 ## Project Structure
 
 ```
 claude-watch-status/
-├── functions/
+├── cmd/
+│   └── claude-watch-status/
+│       └── main.go              # CLI entry point
+├── internal/
+│   ├── cli/                     # Stream and dashboard modes
+│   ├── config/                  # Configuration handling
+│   ├── hooks/                   # Claude Code hooks integration
+│   ├── notifier/                # Desktop notifications
+│   ├── parser/                  # JSONL parsing and state detection
+│   ├── server/                  # Web UI server
+│   ├── state/                   # State management
+│   └── watcher/                 # File system watcher
+├── functions/                   # Legacy shell functions
 │   ├── fish/
-│   │   └── claude-watch-status.fish   # Fish shell implementation
 │   └── zsh/
-│       └── claude-watch-status.zsh    # Zsh implementation
+├── docs/                        # Additional documentation
+├── go.mod
+├── go.sum
 ├── README.md
 ├── CHANGELOG.md
 └── LICENSE
