@@ -238,9 +238,9 @@ func (m *Manager) CheckIdleProjects(idleThreshold time.Duration) []StatusEvent {
 					}
 				}
 			}
-			
+
 			toolTimeout := parser.ToolTimeout(toolName)
-			
+
 			// Skip if not yet past tool-specific threshold
 			if idle < toolTimeout {
 				continue

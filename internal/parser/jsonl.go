@@ -10,9 +10,10 @@ import (
 // Long-running tools like Bash get longer timeouts to reduce false positives
 func ToolTimeout(toolName string) time.Duration {
 	switch toolName {
-	// System tools
+	// System tools - use shorter timeout for quick approval detection
+	// Most bash commands complete within seconds; longer ones will show as estimated
 	case "Bash", "BashOutput":
-		return 1 * time.Minute // Shell commands can run long
+		return 10 * time.Second // Quick detection, mark as estimated if wrong
 
 	// Agent tools
 	case "Task":
