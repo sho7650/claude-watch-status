@@ -100,7 +100,7 @@ func (s *StreamMode) checkIdleProjects() {
 		s.notified[key] = true
 
 		// Update the manager's state
-		s.manager.MarkIdle(event.Project.Name, event.Project.Icon, event.Project.State)
+		s.manager.MarkIdle(event.Project.Name, event.Project.Icon, event.Project.State, event.Project.IsEstimated)
 
 		// Print the status
 		s.printStatus(&event.Project)

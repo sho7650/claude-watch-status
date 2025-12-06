@@ -6,17 +6,17 @@ import (
 	"os"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/sho7650/claude-watch-status/internal/cli"
 	"github.com/sho7650/claude-watch-status/internal/config"
 	"github.com/sho7650/claude-watch-status/internal/hooks"
 	"github.com/sho7650/claude-watch-status/internal/server"
 	"github.com/sho7650/claude-watch-status/internal/state"
 	"github.com/sho7650/claude-watch-status/internal/watcher"
+	"github.com/spf13/cobra"
 )
 
 var (
-	version       = "dev"
+	version       = "0.2.0"
 	dashboardMode bool
 	serverPort    int
 )

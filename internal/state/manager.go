@@ -11,15 +11,17 @@ import (
 
 // ProjectStatus represents the current status of a project
 type ProjectStatus struct {
-	Name      string    `json:"name"`
-	Icon      string    `json:"icon"`
-	State     string    `json:"state"`
-	Detail    string    `json:"detail,omitempty"`
-	UpdatedAt time.Time `json:"updated_at"`
-	SessionID string    `json:"session_id,omitempty"`
-	Source    string    `json:"source"` // "hooks" or "jsonl"
-	FilePath  string    `json:"-"`
-	FileTime  time.Time `json:"-"`
+	Name        string    `json:"name"`
+	Icon        string    `json:"icon"`
+	State       string    `json:"state"`
+	Detail      string    `json:"detail,omitempty"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	SessionID   string    `json:"session_id,omitempty"`
+	Source      string    `json:"source"` // "hooks" or "jsonl"
+	FilePath    string    `json:"-"`
+	FileTime    time.Time `json:"-"`
+	ToolName    string    `json:"-"` // Current tool name for timeout calculation
+	IsEstimated bool      `json:"-"` // true if state is based on timeout heuristics
 }
 
 // StatusEvent represents a status change event
@@ -64,15 +66,17 @@ func (m *Manager) Update(projectName, sessionID, filePath string) (*ProjectStatu
 
 	m.mu.Lock()
 	status := &ProjectStatus{
-		Name:      projectName,
-		Icon:      state.Icon,
-		State:     state.Text,
-		Detail:    state.ToolName,
-		UpdatedAt: time.Now(),
-		SessionID: sessionID,
-		Source:    "jsonl",
-		FilePath:  filePath,
-		FileTime:  info.ModTime(),
+		Name:        projectName,
+		Icon:        state.Icon,
+		State:       state.Text,
+		Detail:      state.ToolName,
+		UpdatedAt:   time.Now(),
+		SessionID:   sessionID,
+		Source:      "jsonl",
+		FilePath:    filePath,
+		FileTime:    info.ModTime(),
+		ToolName:    state.ToolName,
+		IsEstimated: state.IsEstimated,
 	}
 	m.projects[projectName] = status
 	m.mu.Unlock()
@@ -171,6 +175,7 @@ func (m *Manager) notify(event StatusEvent) {
 }
 
 // CheckIdleProjects checks for projects that have been idle and may need notification
+// Uses tool-specific timeouts to reduce false positives for long-running operations
 func (m *Manager) CheckIdleProjects(idleThreshold time.Duration) []StatusEvent {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -185,20 +190,29 @@ func (m *Manager) CheckIdleProjects(idleThreshold time.Duration) []StatusEvent {
 			if status.State != "processing" {
 				continue
 			}
-			// Check idle time for hooks-based processing state using UpdatedAt
+			// Use tool-specific timeout for hooks-based status
+			toolTimeout := parser.ToolTimeout(status.ToolName)
 			idle := now.Sub(status.UpdatedAt)
-			if idle < idleThreshold || idle > 5*time.Minute {
+			
+			// Skip if not yet past tool-specific threshold
+			if idle < toolTimeout {
 				continue
 			}
-			// Processing state that's been idle = waiting approval
+			// Skip if way past max threshold (probably stale)
+			if idle > parser.MaxIdleThreshold {
+				continue
+			}
+			
+			// Processing state that's been idle = estimated waiting approval
 			events = append(events, StatusEvent{
 				Project: ProjectStatus{
-					Name:      status.Name,
-					Icon:      "⏸️",
-					State:     "waiting approval",
-					UpdatedAt: now,
-					SessionID: status.SessionID,
-					Source:    "hooks",
+					Name:        status.Name,
+					Icon:        "❓",
+					State:       "waiting approval",
+					UpdatedAt:   now,
+					SessionID:   status.SessionID,
+					Source:      "hooks",
+					IsEstimated: true,
 				},
 				Type: "idle_approval",
 			})
@@ -207,10 +221,7 @@ func (m *Manager) CheckIdleProjects(idleThreshold time.Duration) []StatusEvent {
 
 		// JSONL-based status: use FileTime for idle detection
 		idle := now.Sub(status.FileTime)
-		if idle < idleThreshold || idle > 5*time.Minute {
-			continue
-		}
-
+		
 		// Re-read the file to check current state
 		entry, err := readLastEntry(status.FilePath)
 		if err != nil {
@@ -218,26 +229,68 @@ func (m *Manager) CheckIdleProjects(idleThreshold time.Duration) []StatusEvent {
 		}
 
 		if parser.IsIdleWaitingApproval(entry) {
+			// Get tool name for timeout calculation
+			toolName := ""
+			if entry.Message != nil {
+				for _, c := range entry.Message.Content {
+					if c.Type == "tool_use" && c.Name != "" {
+						toolName = c.Name
+					}
+				}
+			}
+
+			toolTimeout := parser.ToolTimeout(toolName)
+
+			// Skip if not yet past tool-specific threshold
+			if idle < toolTimeout {
+				continue
+			}
+			// Skip if way past max threshold
+			if idle > parser.MaxIdleThreshold {
+				continue
+			}
+			
+			// Determine if this is a confident or estimated detection
+			// Confident: past tool timeout AND tool is known short-running
+			// Estimated: past tool timeout BUT tool could still be running
+			isEstimated := toolTimeout > parser.DefaultIdleThreshold
+			icon := "⏸️"
+			if isEstimated {
+				icon = "❓"
+			}
+			
 			events = append(events, StatusEvent{
 				Project: ProjectStatus{
-					Name:      status.Name,
-					Icon:      "⏸️",
-					State:     "waiting approval",
-					UpdatedAt: now,
-					SessionID: status.SessionID,
-					Source:    "jsonl",
+					Name:        status.Name,
+					Icon:        icon,
+					State:       "waiting approval",
+					UpdatedAt:   now,
+					SessionID:   status.SessionID,
+					Source:      "jsonl",
+					ToolName:    toolName,
+					IsEstimated: isEstimated,
 				},
 				Type: "idle_approval",
 			})
 		} else if parser.IsIdleCompleted(entry) {
+			// For completion detection, use default threshold
+			if idle < idleThreshold {
+				continue
+			}
+			if idle > parser.MaxIdleThreshold {
+				continue
+			}
+			
+			// Completion is always estimated since we can't detect end_turn
 			events = append(events, StatusEvent{
 				Project: ProjectStatus{
-					Name:      status.Name,
-					Icon:      "✅",
-					State:     "completed",
-					UpdatedAt: now,
-					SessionID: status.SessionID,
-					Source:    "jsonl",
+					Name:        status.Name,
+					Icon:        "❓",
+					State:       "completed",
+					UpdatedAt:   now,
+					SessionID:   status.SessionID,
+					Source:      "jsonl",
+					IsEstimated: true,
 				},
 				Type: "idle_completed",
 			})
@@ -248,12 +301,13 @@ func (m *Manager) CheckIdleProjects(idleThreshold time.Duration) []StatusEvent {
 }
 
 // MarkIdle updates a project's status to an idle state
-func (m *Manager) MarkIdle(projectName string, icon, state string) {
+func (m *Manager) MarkIdle(projectName string, icon, state string, isEstimated bool) {
 	m.mu.Lock()
 	if status, ok := m.projects[projectName]; ok {
 		status.Icon = icon
 		status.State = state
 		status.UpdatedAt = time.Now()
+		status.IsEstimated = isEstimated
 	}
 	m.mu.Unlock()
 }
